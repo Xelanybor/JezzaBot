@@ -1,8 +1,6 @@
 import threading
 import asyncio
 import os
-from sys import prefix
-from discord.gateway import DiscordClientWebSocketResponse
 from dotenv import load_dotenv
 import discord
 from discord import Intents
@@ -73,7 +71,10 @@ twitchClient = twtCommands.Bot(
 @discordClient.event
 async def on_ready():
     print(f'Logged into Discord as {discordClient.user}.')
-    await discordClient.change_presence(status=discord.Status.online, activity=discord.Game(name=".help for help!"))
+    await discordClient.change_presence(
+        status=discord.Status.online, 
+        activity=discord.Game(name=".help for help!")
+        )
 
 @twitchClient.event
 async def event_ready():

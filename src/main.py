@@ -1,4 +1,3 @@
-import threading
 import asyncio
 import os
 from dotenv import load_dotenv
@@ -12,7 +11,10 @@ from twitchio.ext import commands as twtCommands
 # ---------------------------------------------------------------------------------
 load_dotenv()
 try:
-    DEBUG = bool(os.getenv("DEBUG"))
+    if os.getenv("DEBUG").lower() == "true":
+        DEBUG = True
+    else:
+        DEBUG = False
 except:
     DEBUG = False
 
@@ -59,7 +61,7 @@ TWITCH_INITIAL_CHANNELS=os.getenv('TWITCH_CHANNELS').split(" ")
 # Create twitch bot
 twitchClient = twtCommands.Bot(
     token = TWITCH_TOKEN[0],
-    cliend_id = TWITCH_CLIENT_ID,
+    client_id = TWITCH_CLIENT_ID,
     nick = TWITCH_NICK,
     prefix = TWITCH_PREFIX,
     initial_channels = TWITCH_INITIAL_CHANNELS
@@ -76,9 +78,9 @@ async def on_ready():
         activity=discord.Game(name=".help for help!")
         )
 
-@twitchClient.event
+@twitchClient.event()
 async def event_ready():
-    print(f'Logged into Twitch as {TWITCH_NICK}.')
+    print(f'Logged into Twitch as {TWITCH_NICK[0]}.')
 
 @twitchClient.command()
 async def test(ctx):
@@ -88,13 +90,16 @@ async def test(ctx):
 
 print("Starting bots...")
 
-
-# t = threading.Thread(target=twitchClient.run, daemon=True)
-# t.start()
-
-# # d = threading.Thread(discordClient.start, DISCORD_TOKEN)
-
-# asyncio.run(discordClient.start(DISCORD_TOKEN))
-# # await discordClient.start(DISCORD_TOKEN)
+try:
+    loop = asyncio.get_event_loop()
+    loop.create_task(twitchClient.connect())
+    loop.create_task(discordClient.start(DISCORD_TOKEN))
+    loop.run_forever()
+except KeyboardInterrupt:
+    pass
+finally:
+    loop.run_until_complete(twitchClient.close())
+    loop.close()
 
 twitchClient.run()
+discordClient.run(DISCORD_TOKEN)

@@ -1,6 +1,7 @@
 import asyncio
 import os
 from dotenv import load_dotenv
+from twitchcord.DualClient import dualClient
 import discord
 from discord import Intents
 from discord.ext import commands as dscCommands
@@ -37,12 +38,12 @@ discordClient = dscCommands.Bot(
     )
 
 # Load cogs
-for filename in os.listdir("src/discord_commands"):
+for filename in os.listdir("src/twitchcord/discord_commands"):
     if filename[-3:] == ".py":
         try:
             if DEBUG:
                 print(f"Attempting to load module \"{filename}\"...")
-            discordClient.load_extension(f"discord_commands.{filename[:-3]}")
+            discordClient.load_extension(f"twitchcord.discord_commands.{filename[:-3]}")
             if DEBUG:
                 print(f"Successfully loaded module \"{filename}\".")
         except:
@@ -70,12 +71,14 @@ twitchClient = twtCommands.Bot(
 # Bot startup
 # ---------------------------------------------------------------------------------
 
+JezzaBot = dualClient(discordClient, twitchClient, DISCORD_TOKEN)
+
 @discordClient.event
 async def on_ready():
     print(f'Logged into Discord as {discordClient.user}.')
     await discordClient.change_presence(
         status=discord.Status.online, 
-        activity=discord.Game(name=".help for help!")
+        activity=discord.Game(name="-help for help!")
         )
 
 @twitchClient.event()
@@ -86,20 +89,5 @@ async def event_ready():
 async def test(ctx):
     await ctx.send("yep it works")
 
-
-
 print("Starting bots...")
-
-try:
-    loop = asyncio.get_event_loop()
-    loop.create_task(twitchClient.connect())
-    loop.create_task(discordClient.start(DISCORD_TOKEN))
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
-finally:
-    loop.run_until_complete(twitchClient.close())
-    loop.close()
-
-twitchClient.run()
-discordClient.run(DISCORD_TOKEN)
+JezzaBot.run()

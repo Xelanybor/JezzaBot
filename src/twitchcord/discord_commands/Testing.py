@@ -28,6 +28,7 @@ class Testing(commands.Cog):
         for account in accounts:
             # await ctx.send(" - ".join(list(account)))
             await ctx.send(account)
+        conn.close()
 
-def setup(client):
+def setup(client: commands.Bot):
     client.add_cog(Testing(client))

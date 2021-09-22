@@ -22,8 +22,12 @@ class Testing(commands.Cog):
         await ctx.send(f"Successfully linked {ctx.author} to {twitchName}!")
 
     @commands.command()
-    async def getAccounts(self, ctx):
-        conn = mainConnection
+    async def accounts(self, ctx):
+        conn = mainConnection()
+        accounts = conn.getAccounts()
+        for account in accounts:
+            # await ctx.send(" - ".join(list(account)))
+            await ctx.send(account)
 
 def setup(client):
     client.add_cog(Testing(client))

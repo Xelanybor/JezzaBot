@@ -18,7 +18,7 @@ class mainConnection:
         """Execute an sql statement and return a list of Row objects."""
         cursor = self.__connection.cursor()
         cursor.execute(sql, *params)
-        output = self.__cursor.fetchall()
+        output = cursor.fetchall()
         cursor.close()
         return output
 
@@ -45,7 +45,7 @@ class mainConnection:
             raise msg
 
     def getAccounts(self):
-        return self.get("SELECT * FROM Users;")
+        return self.get("SELECT * FROM Users")
 
 if __name__ == "__main__":
     print(os.getcwd())

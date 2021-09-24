@@ -1,9 +1,10 @@
-from typing import List
 import discord
-from discord import client
 from discord.ext import commands
 from discord.ext import tasks
+import re
 import youtube_dl
+
+from ..Music import search
 
 FFMPEG_DIR = r"C:\Users\Alex\Downloads\ffmpeg-2021-09-20-git-59719a905c-essentials_build\bin\ffmpeg.exe"
 FFMPEG_OPTIONS = {
@@ -25,6 +26,7 @@ class Music(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
         self.queues = {}
+        self.active_channel = None
 
         ytdl_format_options = {
         'format': 'bestaudio/best',
@@ -75,7 +77,11 @@ class Music(commands.Cog):
         """Checks if any voice clients aren't playing music, and if so plays the next song in the queue if there is one."""
         for voice in self.client.voice_clients:
             guild = voice.guild
-            if (not voice.is_playing()) and len(self.queues[guild.id]) > 0:
+            if not guild.id in self.queues:
+                self.queues[guild.id] = []
+            if (not voice.is_playing()) and len(self.queues[guild.id]) == 1:
+                self.queues[guild.id].pop(0)
+            if (not voice.is_playing()) and len(self.queues[guild.id]) > 1:
                 self.play_next(voice, guild)
 
     @update_queues.before_loop
@@ -86,19 +92,40 @@ class Music(commands.Cog):
 
 
     @commands.command(aliases=["p"])
-    async def play(self, ctx: commands.Context, link=None):
+    async def play(self, ctx: commands.Context, *, userInput):
+        """Plays a given song.
+        
+        Accepts Youtube links, Spotify links, and search terms for Youtube."""
 
         voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
 
-        # If no link is given, command is either used to resume if paused or sends a message otherwise
+        # If no song is given, command is either used to resume if paused or sends a message otherwise
 
-        if not link:
+        if not userInput:
             if voice:
                 if voice.is_paused():
                     voice.resume()
                     return
             await ctx.send("No song found to play!")
             return
+
+        # Search youtube for song
+
+        if search.isYoutubeVideo(userInput):
+            link = userInput
+
+        elif search.isSpotifySong(userInput):
+            link = search.getSpotifySingle(userInput)
+
+        elif search.isSpotifyPlaylist(userInput):
+            for link in search.getSpotifyPlaylist(userInput):
+                info = self.ytdl.extract_info(link, download=False)
+                song = Song(info['title'], info['url'])
+                self.add_to_queue(song, ctx.guild)
+            link = self.queues[ctx.guild.id][0].url
+
+        else:
+            link = search.searchYoutube(userInput)
 
         # Move to the right channel or join if not already connected
 
@@ -149,16 +176,38 @@ class Music(commands.Cog):
         if voice.is_playing():
             voice.stop()
 
+    @commands.command(aliases=["next", "n", "s"])
+    async def skip(self, ctx: commands.Context):
+        """Skip to the next song in the queue if there is one."""
+        voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+        guild: discord.Guild = ctx.guild
+
+        voice.stop()
+
+        if len(self.queues[guild.id]) > 1:
+            self.play_next(voice, guild)
+
     @commands.command(aliases=["q"])
     async def queue(self, ctx: commands.Context):
         """Display the song queue."""
-        queue = "**Current Song Queue:**"
-        i = 1
-        for song in self.queue[ctx.guild.id]:
-            queue += f"\n{i:2>}. {song.title}"
-            i += 1
 
-        await ctx.send(queue)
+        guildID = ctx.guild.id
+
+        if not ctx.guild.id in self.queues:
+            self.queues[guildID] = []
+
+        if len(self.queues[guildID]) == 0:
+            await ctx.send("The queue is empty!")
+        else:
+            queue = "**Current Song Queue:**"
+            i = 1
+            for song in self.queues[guildID]:
+                queue += f"\n{i:2>}) {song.title}"
+                if i == 1:
+                    queue += "  **<- Now Playing**"
+                i += 1
+
+            await ctx.send(queue)
 
 
         

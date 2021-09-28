@@ -38,16 +38,19 @@ discordClient = dscCommands.Bot(
     )
 
 # Load cogs
-for filename in os.listdir("src/twitchcord/discord_commands"):
-    if filename[-3:] == ".py":
+for filename in os.listdir("twitchcord/discord_commands"):
+    if filename[-3:] == ".py" and filename != "__init__.py" and filename != "Testing.py":
         try:
             if DEBUG:
                 print(f"Attempting to load module \"{filename}\"...")
             discordClient.load_extension(f"twitchcord.discord_commands.{filename[:-3]}")
             if DEBUG:
                 print(f"Successfully loaded module \"{filename}\".")
-        except:
-            print(f"Couldn't load module \"{filename}\"!")
+        except Exception as e:
+            print(f"Couldn't load module \"{filename}\": {e}")
+
+if DEBUG:
+    discordClient.load_extension("twitchcord.discord_commands.Testing")
 
 # Twitch bot initialization
 # ---------------------------------------------------------------------------------

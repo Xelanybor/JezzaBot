@@ -1,9 +1,12 @@
+"""Module for searching youtube with search terms, youtube links and spotify links."""
+
 from dotenv import load_dotenv
 import os
 import re
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import urllib
+import youtube_dl
 
 # Load environment variables
 load_dotenv()
@@ -39,11 +42,14 @@ def getSpotifyPlaylist(link):
     for item in playlist["items"]:
         track = item["track"]
         searchTerms = track["name"] + " - " + track["album"]["artists"][0]["name"]
-        songs.append(searchYoutube(searchTerms))
+        try:
+            songs.append(searchYoutube(searchTerms))
+        except:
+            pass
     return songs
 
 def isYoutubeVideo(query):
-    return bool(re.search("^https://www.youtube.com/watch?v=.{11}", query))
+    return bool(re.search("^https://www.youtube.com/watch?v=.{11}", query)) or bool(re.search("^https://youtu.be/.{11}", query))
 
 def isSpotifySong(query):
     return bool(re.search("^https://open.spotify.com/track/.{42}", query))

@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 
 from ..sql.MainConnection import mainConnection
+from ..Music.song import Song
+from ..Music import embeds
 
 class Testing(commands.Cog):
     """Testing commands cause idk what I'm doing lol."""
@@ -29,6 +31,11 @@ class Testing(commands.Cog):
             # await ctx.send(" - ".join(list(account)))
             await ctx.send(account)
         conn.close()
+
+    @commands.command()
+    async def embed(self, ctx):
+        embed = embeds.queuedSongs(3)
+        await ctx.send(embed=embed)
 
 def setup(client: commands.Bot):
     client.add_cog(Testing(client))

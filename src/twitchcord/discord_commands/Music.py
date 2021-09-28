@@ -1,10 +1,13 @@
+from typing import Union
 import discord
+from discord import guild
 from discord.ext import commands
 from discord.ext import tasks
-import re
 import youtube_dl
 
 from ..Music import search
+from ..Music import embeds
+from ..Music.song import Song
 
 FFMPEG_DIR = r"C:\Users\Alex\Downloads\ffmpeg-2021-09-20-git-59719a905c-essentials_build\bin\ffmpeg.exe"
 FFMPEG_OPTIONS = {
@@ -12,21 +15,14 @@ FFMPEG_OPTIONS = {
         'options': '-vn'
         }
 
-class Song():
-    """Object that represents a song, with a title and url."""
-
-    def __init__(self, title: str, url: str):
-        self.title = title
-        self.url = url
-
-
 class Music(commands.Cog):
     """Used to make JezzaBot play music from youtube. RIP Groovy."""
 
     def __init__(self, client: commands.Bot):
         self.client = client
         self.queues = {}
-        self.active_channel = None
+        self.active_channel = {}
+        self.last_now_playing = {}
 
         ytdl_format_options = {
         'format': 'bestaudio/best',
@@ -46,13 +42,36 @@ class Music(commands.Cog):
 
         self.update_queues.start()
 
-    async def display_now_playing(self, ctx: commands.Context, song: Song):
-        """Send a message showing the currently playing song."""
-        await ctx.send(f"Now playing: **{song.title}**.")
+    @commands.before_invoke
+    async def setActiveChannel(self, ctx):
+        """Update the guild's currently active channel to send messages in."""
+        self.active_channel[ctx.guild.id] = ctx.channel
+
+    async def display_now_playing(self, ctx, song: Song):
+        """Send a message when a song starts playing."""
+        if ctx.guild.id in self.last_now_playing:
+            await self.last_now_playing[ctx.guild.id].delete()
+        self.last_now_playing[ctx.guild.id] = await ctx.send(embed=embeds.nowPlaying(song))
+
+    async def display_currently_playing(self, ctx, song: Song = None):
+        """Send a message about the song currently playing."""
+
+        if not song:
+            await ctx.send(embed=embeds.notPlaying())
+            return
+        try:
+            voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+        except:
+            await ctx.send(embed=embeds.notPlaying())
+            return
+        if voice.is_playing():
+            await ctx.send(embed=embeds.currentlyPlaying(song))
+        else:
+            await ctx.send(embed=embeds.notPlaying())
 
     async def display_added_to_queue(self, ctx: commands.Context, song: Song):
         """Send a message showing that a song has been added to the queue."""
-        await ctx.send(f"**{song.title}** added to queue.")
+        await ctx.send(embed=embeds.queuedSong(song))
 
 
     def add_to_queue(self, song: Song, guild: discord.Guild):
@@ -66,11 +85,12 @@ class Music(commands.Cog):
         audio = discord.FFmpegPCMAudio(executable=FFMPEG_DIR, source=song.url, **FFMPEG_OPTIONS)
         voice.play(audio)
 
-    def play_next(self, voice: discord.VoiceClient, guild: discord.Guild):
+    async def play_next(self, voice: discord.VoiceClient, guild: discord.Guild):
         """Play the next song in the queue."""
         self.queues[guild.id].pop(0)
         nextSong = self.queues[guild.id][0]
         self.play_raw(voice, nextSong)
+        await self.display_now_playing(self.active_channel[guild.id], nextSong)
 
     @tasks.loop(seconds=5)
     async def update_queues(self):
@@ -82,7 +102,7 @@ class Music(commands.Cog):
             if (not voice.is_playing()) and len(self.queues[guild.id]) == 1:
                 self.queues[guild.id].pop(0)
             if (not voice.is_playing()) and len(self.queues[guild.id]) > 1:
-                self.play_next(voice, guild)
+                await self.play_next(voice, guild)
 
     @update_queues.before_loop
     async def before_update_queues(self):
@@ -97,9 +117,15 @@ class Music(commands.Cog):
         
         Accepts Youtube links, Spotify links, and search terms for Youtube."""
 
+        # Set active channel
+
+        self.active_channel[ctx.guild.id] = ctx.channel
+
         voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
 
         # If no song is given, command is either used to resume if paused or sends a message otherwise
+
+        playlist = False
 
         if not userInput:
             if voice:
@@ -118,11 +144,14 @@ class Music(commands.Cog):
             link = search.getSpotifySingle(userInput)
 
         elif search.isSpotifyPlaylist(userInput):
-            for link in search.getSpotifyPlaylist(userInput):
+            playlist = search.getSpotifyPlaylist(userInput)
+            for link in playlist:
                 info = self.ytdl.extract_info(link, download=False)
-                song = Song(info['title'], info['url'])
+                song = Song(info['title'], info['url'], ctx.author, link, info['duration'])
                 self.add_to_queue(song, ctx.guild)
-            link = self.queues[ctx.guild.id][0].url
+            link = self.queues[ctx.guild.id][0].yt_link
+            await ctx.send(embed=embeds.queuedSongs(len(playlist)))
+            playlist = True
 
         else:
             link = search.searchYoutube(userInput)
@@ -138,17 +167,19 @@ class Music(commands.Cog):
         # Get youtube video
 
         info = self.ytdl.extract_info(link, download=False)
-        song = Song(info['title'], info['url'])
+        song = Song(info['title'], info['url'], ctx.author, link, info['duration'])
 
         # Check if bot is already playing a song
 
-        if voice.is_playing():
-            # Add song to queue
+        # Add song to queue
+        if not playlist:
             self.add_to_queue(song, ctx.guild)
+
+        if voice.is_playing():
+            # Display the song added
             await self.display_added_to_queue(ctx, song)
         else:
             # Play song
-            self.add_to_queue(song, ctx.guild)
             self.play_raw(voice, song)
             await self.display_now_playing(ctx, song)
 
@@ -185,7 +216,7 @@ class Music(commands.Cog):
         voice.stop()
 
         if len(self.queues[guild.id]) > 1:
-            self.play_next(voice, guild)
+            await self.play_next(voice, guild)
 
     @commands.command(aliases=["q"])
     async def queue(self, ctx: commands.Context):
@@ -199,15 +230,18 @@ class Music(commands.Cog):
         if len(self.queues[guildID]) == 0:
             await ctx.send("The queue is empty!")
         else:
-            queue = "**Current Song Queue:**"
-            i = 1
-            for song in self.queues[guildID]:
-                queue += f"\n{i:2>}) {song.title}"
-                if i == 1:
-                    queue += "  **<- Now Playing**"
-                i += 1
+            message = embeds.queue(self.queues[guildID], 0)
+            await ctx.send(message)
 
-            await ctx.send(queue)
+    @commands.command(aliases=["np"])
+    async def nowplaying(self, ctx: commands.context):
+        """Displays the song that is currently playing."""
+
+        if not ctx.guild.id in self.queues:
+            self.queues[ctx.guild.id] = []
+            await self.display_currently_playing(ctx)
+        else:
+            await self.display_currently_playing(ctx, self.queues[ctx.guild.id][0])
 
 
         

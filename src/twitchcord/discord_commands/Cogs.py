@@ -40,3 +40,6 @@ class Cogs(commands.Cog):
             self.client.reload_extension(f"twitchcord.discord_commands.{cog}")
         except ExtensionNotFound as e:
             await ctx.send(f"Cog `{e.name}` was unable to be found!")
+
+def setup(client: commands.Bot):
+    client.add_cog(Cogs(client))

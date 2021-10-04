@@ -23,6 +23,8 @@ class Music(commands.Cog):
         self.queues = {}
         self.active_channel = {}
         self.last_now_playing = {}
+        
+        self.queuing_songs = False
 
         ytdl_format_options = {
         'format': 'bestaudio/best',
@@ -102,7 +104,8 @@ class Music(commands.Cog):
             if (not voice.is_playing()) and len(self.queues[guild.id]) == 1:
                 self.queues[guild.id].pop(0)
             if (not voice.is_playing()) and len(self.queues[guild.id]) > 1:
-                await self.play_next(voice, guild)
+                if not self.queuing_songs:
+                    await self.play_next(voice, guild)
 
     @update_queues.before_loop
     async def before_update_queues(self):
@@ -116,6 +119,8 @@ class Music(commands.Cog):
         """Plays a given song.
         
         Accepts Youtube links, Spotify links, and search terms for Youtube."""
+
+        self.queuing_songs = True
 
         # Set active channel
 
@@ -182,6 +187,8 @@ class Music(commands.Cog):
             # Play song
             self.play_raw(voice, song)
             await self.display_now_playing(ctx, song)
+
+        self.queuing_songs = False
 
     @commands.command()
     async def pause(self, ctx: commands.Context):

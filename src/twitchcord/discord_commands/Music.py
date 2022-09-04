@@ -1,6 +1,6 @@
 from typing import Union
 import discord
-from discord import guild
+from discord import guild, app_commands
 from discord.ext import commands
 from discord.ext import tasks
 import youtube_dl
@@ -18,8 +18,8 @@ FFMPEG_OPTIONS = {
 class Music(commands.Cog):
     """Used to make JezzaBot play music from youtube. RIP Groovy."""
 
-    def __init__(self, client: commands.Bot):
-        self.client = client
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
         self.queues = {}
         self.active_channel = {}
         self.last_now_playing = {}
@@ -62,7 +62,7 @@ class Music(commands.Cog):
             await ctx.send(embed=embeds.notPlaying())
             return
         try:
-            voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+            voice: discord.VoiceClient = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
         except:
             await ctx.send(embed=embeds.notPlaying())
             return
@@ -97,7 +97,7 @@ class Music(commands.Cog):
     @tasks.loop(seconds=5)
     async def update_queues(self):
         """Checks if any voice clients aren't playing music, and if so plays the next song in the queue if there is one."""
-        for voice in self.client.voice_clients:
+        for voice in self.bot.voice_clients:
             guild = voice.guild
             if not guild.id in self.queues:
                 self.queues[guild.id] = []
@@ -109,16 +109,18 @@ class Music(commands.Cog):
 
     @update_queues.before_loop
     async def before_update_queues(self):
-        await self.client.wait_until_ready()
+        await self.bot.wait_until_ready()
                 
 
 
 
-    @commands.command(aliases=["p"])
-    async def play(self, ctx: commands.Context, *, userInput):
+    @app_commands.command()
+    async def play(self, ctx: commands.Context, *, searchTerm: str):
         """Plays a given song.
         
         Accepts Youtube links, Spotify links, and search terms for Youtube."""
+        
+        userInput = searchTerm
 
         self.queuing_songs = True
 
@@ -126,7 +128,7 @@ class Music(commands.Cog):
 
         self.active_channel[ctx.guild.id] = ctx.channel
 
-        voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+        voice: discord.VoiceClient = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
 
         # If no song is given, command is either used to resume if paused or sends a message otherwise
 
@@ -190,34 +192,34 @@ class Music(commands.Cog):
 
         self.queuing_songs = False
 
-    @commands.command()
+    @app_commands.command()
     async def pause(self, ctx: commands.Context):
         """Pause the currently playing song."""
-        voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+        voice: discord.VoiceClient = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
 
         if voice.is_playing():
             voice.pause()
 
-    @commands.command()
+    @app_commands.command()
     async def resume(self, ctx: commands.Context):
         """Resume the currently playing song."""
-        voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+        voice: discord.VoiceClient = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
 
         if voice.is_paused():
             voice.resume()
 
-    @commands.command()
+    @app_commands.command()
     async def stop(self, ctx: commands.Context):
         """Stop the currently playing song."""
-        voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+        voice: discord.VoiceClient = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
 
         if voice.is_playing():
             voice.stop()
 
-    @commands.command(aliases=["next", "n", "s"])
+    @app_commands.command()
     async def skip(self, ctx: commands.Context):
         """Skip to the next song in the queue if there is one."""
-        voice: discord.VoiceClient = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+        voice: discord.VoiceClient = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
         guild: discord.Guild = ctx.guild
 
         voice.stop()
@@ -225,7 +227,7 @@ class Music(commands.Cog):
         if len(self.queues[guild.id]) > 1:
             await self.play_next(voice, guild)
 
-    @commands.command(aliases=["q"])
+    @app_commands.command()
     async def queue(self, ctx: commands.Context):
         """Display the song queue."""
 
@@ -240,7 +242,7 @@ class Music(commands.Cog):
             message = embeds.queue(self.queues[guildID], 0)
             await ctx.send(message)
 
-    @commands.command(aliases=["np"])
+    @app_commands.command()
     async def nowplaying(self, ctx: commands.context):
         """Displays the song that is currently playing."""
 
@@ -258,5 +260,5 @@ class Music(commands.Cog):
 
 
 
-def setup(client: commands.Bot):
-    client.add_cog(Music(client))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Music(bot))

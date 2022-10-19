@@ -1,7 +1,7 @@
 import discord
 
 class duration():
-    """Object to stroe the duration of a song."""
+    """Object to store the duration of a song."""
 
     def __init__(self, hours: int, minutes: int, seconds: int):
         self.hours = hours
@@ -10,9 +10,9 @@ class duration():
 
     def toString(self):
         if self.hours:
-            return f"{self.hours}:{self.minutes}:{self.seconds}"
+            return f"{self.hours}:{self.minutes:02d}:{self.seconds:02d}"
         else:
-            return f"{self.minutes}:{self.seconds}"
+            return f"{self.minutes:02d}:{self.seconds:02d}"
 
 class Song():
     """Object that represents a song, with a title and url."""
@@ -24,8 +24,8 @@ class Song():
         self.yt_link = yt_link
 
         seconds = durationSeconds
-        hours = seconds // 360
-        seconds = seconds % 360
+        hours = seconds // 3600
+        seconds = seconds % 3600
         minutes = seconds // 60
         seconds = seconds % 60
         self.duration = duration(hours, minutes, seconds)

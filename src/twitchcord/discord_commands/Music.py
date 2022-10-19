@@ -102,7 +102,8 @@ class Music(commands.Cog):
             if (not voice.is_playing()) and len(self.queues[guild.id]) == 1:
                 self.queues[guild.id].pop(0)
             if (not voice.is_playing()) and len(self.queues[guild.id]) > 1:
-                await self.play_next(voice, guild)
+                if not self.queuing_songs or True:
+                    await self.play_next(voice, guild)
 
     @update_queues.before_loop
     async def before_update_queues(self):
@@ -137,7 +138,9 @@ class Music(commands.Cog):
 
         # Search youtube for song
 
-        if search.isYoutubeVideo(userInput):
+        github = search.isGithub(userInput)
+
+        if search.isYoutubeVideo(userInput) or github:
             link = userInput
 
         elif search.isSpotifySong(userInput):
@@ -145,12 +148,12 @@ class Music(commands.Cog):
 
         elif search.isSpotifyPlaylist(userInput):
             playlist = search.getSpotifyPlaylist(userInput)
+            await ctx.send(embed=embeds.queuedSongs(len(playlist)))
             for link in playlist:
                 info = self.ytdl.extract_info(link, download=False)
                 song = Song(info['title'], info['url'], ctx.author, link, info['duration'])
                 self.add_to_queue(song, ctx.guild)
             link = self.queues[ctx.guild.id][0].yt_link
-            await ctx.send(embed=embeds.queuedSongs(len(playlist)))
             playlist = True
 
         else:
@@ -166,8 +169,11 @@ class Music(commands.Cog):
 
         # Get youtube video
 
-        info = self.ytdl.extract_info(link, download=False)
-        song = Song(info['title'], info['url'], ctx.author, link, info['duration'])
+        if not github:
+            info = self.ytdl.extract_info(link, download=False)
+            song = Song(info['title'], info['url'], ctx.author, link, info['duration'])
+        else:
+            song = Song('', link, ctx.author, link, 0)
 
         # Check if bot is already playing a song
 

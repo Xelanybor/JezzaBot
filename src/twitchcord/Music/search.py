@@ -56,3 +56,6 @@ def isSpotifySong(query):
 
 def isSpotifyPlaylist(query):
     return bool(re.search("^https://open.spotify.com/playlist/.{42}", query))
+
+def isGithub(query):
+    return bool(re.search("^https://.+.github.io/", query))

@@ -8,6 +8,8 @@ from discord.ext import commands as dscCommands
 import twitchio
 from twitchio.ext import commands as twtCommands
 
+import random
+
 # Debug initialization
 # ---------------------------------------------------------------------------------
 load_dotenv()
@@ -91,6 +93,110 @@ async def event_ready():
 @twitchClient.command()
 async def test(ctx):
     await ctx.send("yep it works")
+
+# Bruh----------------------------------------
+
+agents =  [
+    "Brimstone",
+    "Viper",
+    "Omen",
+    "Killjoy",
+    "Cypher",
+    "Sova",
+    "Sage",
+    "Phoenix",
+    "Jett",
+    "Reyna",
+    "Raze",
+    "Breach",
+    "Skye",
+    "Yoru",
+    "Astra",
+    "KAY/O",
+    "Chamber",
+    "Neon",
+    "Fade",
+    "Harbor"
+]
+
+pistols = [
+    "Knife",
+    "Classic",
+    "Shorty",
+    "Frenzy",
+    "Ghost",
+    "Sheriff"
+]
+
+guns = [
+    "Knife",
+    "Classic",
+    "Shorty",
+    "Frenzy",
+    "Ghost",
+    "Sheriff",
+    "Stinger",
+    "Spectre",
+    "Bucky",
+    "Judge",
+    "Bulldog",
+    "Guardian",
+    "Phantom",
+    "Vandal",
+    "Marshal",
+    "Operator",
+    "Ares",
+    "Odin"
+]
+
+@twitchClient.command()
+async def randomChar(ctx: twtCommands.Context, number: int = 1):
+    if number > 5:
+        await ctx.send("Maximum number is 5!")
+        return
+    if number == 1:
+        index = random.randrange(0, len(agents) - 1)
+        await ctx.send(f"@{ctx.author.name} {agents[index]}")
+        return
+    message = ""
+    used = []
+    for i in range(number):
+        index = random.randrange(0, len(agents) - 1)
+        while index in used:
+            index = random.randrange(0, len(agents) - 1)
+        used.append(index)
+        message += f"{i + 1}) {agents[index]}{' | ' if i < number - 1 else ''}"
+    await ctx.send(message)
+
+@twitchClient.command()
+async def randomPistol(ctx: twtCommands.Context, number: int = 1):
+    if number > 5:
+        await ctx.send("Maximum number is 5!")
+    if number == 1:
+        index = random.randrange(0, len(pistols) - 1)
+        await ctx.send(f"@{ctx.author.name} {pistols[index]}")
+        return
+    message = ""
+    for i in range(number):
+        index = random.randrange(0, len(pistols) - 1)
+        message += f"{i + 1}) {pistols[index]}{' | ' if i < number - 1 else ''}"
+    await ctx.send(message)
+
+@twitchClient.command()
+async def randomGun(ctx: twtCommands.Context, number: int = 1):
+    if number > 5:
+        await ctx.send("Maximum number is 5!")
+    if number == 1:
+        index = random.randrange(0, len(guns) - 1)
+        await ctx.send(f"@{ctx.author.name} {guns[index]}")
+        return
+    message = ""
+    for i in range(number):
+        index = random.randrange(0, len(guns) - 1)
+        message += f"{i + 1}) {guns[index]}{' | ' if i < number - 1 else ''}"
+    await ctx.send(message)
+
+# Bruh----------------------------------------
 
 print("Starting bots...")
 JezzaBot.run()
